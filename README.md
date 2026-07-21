@@ -1,4 +1,5 @@
 <img width="227" height="202" alt="image" src="https://github.com/user-attachments/assets/311adfe1-aa59-4462-b616-39965fec3ec9" />
+<img width="457" height="404" alt="image" src="https://github.com/user-attachments/assets/0e21838b-37c4-4205-8b81-ca5c453fec61" />
 
 # 🐉 Pixel Dragon — a desktop pet with a life of its own
 
