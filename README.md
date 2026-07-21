@@ -1,3 +1,5 @@
+<img width="227" height="202" alt="image" src="https://github.com/user-attachments/assets/311adfe1-aa59-4462-b616-39965fec3ec9" />
+
 # 🐉 Pixel Dragon — a desktop pet with a life of its own
 
 A tiny pixel-art dragon that lives on your desktop. It flies around, breathes fire,
