@@ -19,6 +19,7 @@ contextBridge.exposeInMainWorld('pet', {
   onChatAppend: (cb) => ipcRenderer.on('chat-append', (e, m) => cb(m)),
   getLang: () => ipcRenderer.invoke('get-lang'),
   setLang: (l) => ipcRenderer.send('set-lang', l),
+  onLangChanged: (cb) => ipcRenderer.on('lang-changed', (e, code) => cb(code)),
   onAppTag: (cb) => ipcRenderer.on('app-tag', (e, tag) => cb(tag)),
   toggleBubble: () => ipcRenderer.send('toggle-bubble'),
   closeBubble: () => ipcRenderer.send('close-bubble'),

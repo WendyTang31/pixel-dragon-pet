@@ -308,7 +308,7 @@ async function askClaude(userText) {
   if (convo.length > 12) convo.splice(0, convo.length - 12);
 
   const headers = { 'x-api-key': cfg.apiKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' };
-  const langName = { en: 'English', zh: 'Chinese (中文)', es: 'Spanish (Español)' }[cfg.lang] || 'Chinese (中文)';
+  const langName = { en: 'English', zh: 'Chinese (中文)', es: 'Spanish (Español)' }[cfg.lang] || 'English';
   const system = '你是用户桌面上的一只可爱像素龙助手,回答简洁、友好、口语化,像朋友聊天,需要最新信息时用联网搜索,别啰嗦。 Always reply in ' + langName + '.';
   const base = { model: 'claude-haiku-4-5-20251001', max_tokens: 1024, system, messages: convo };
   const withTools = Object.assign({}, base, { tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 3 }] });
@@ -336,8 +336,12 @@ async function askClaude(userText) {
 ipcMain.handle('chat-send', (e, text) => askClaude(text));
 ipcMain.handle('chat-has-key', () => !!loadConfig().apiKey);
 ipcMain.handle('chat-history', () => transcript);
-ipcMain.handle('get-lang', () => loadConfig().lang || 'zh');
-ipcMain.on('set-lang', (e, l) => { const c = loadConfig(); c.lang = l; saveConfig(c); });
+function applyLangEverywhere(code) {
+  const c = loadConfig(); c.lang = code; saveConfig(c);
+  [chatWin, bubbleWin].forEach((w) => { if (w && !w.isDestroyed()) w.webContents.send('lang-changed', code); });
+}
+ipcMain.handle('get-lang', () => loadConfig().lang || 'en');
+ipcMain.on('set-lang', (e, l) => applyLangEverywhere(l));
 
 function openChat() {
   if (chatWin && !chatWin.isDestroyed()) { chatWin.focus(); return; }
@@ -409,23 +413,31 @@ function pollWallpaper() {
   } catch (e) { /* ignore */ }
 }
 
+const MENU_T = {
+  en: { chat: '💬 Chat with dragon (Claude)', lang: '🌐 Language / 语言', fire: '🔥 Breathe fire', fly: '🌀 Fly a lap', land: '🛬 Land / Take off', friend: '💕 Invite a friend', absorb: '🎨 Drag-to-camouflage', dnd: '😴 Do not disturb / Wake', evolve: '✨ Evolve now', quit: '❌ Quit' },
+  zh: { chat: '💬 和龙聊天 (Claude)', lang: '🌐 语言 / Language', fire: '🔥 喷火', fly: '🌀 绕屏飞一圈', land: '🛬 降落 / 起飞', friend: '💕 叫朋友来', absorb: '🎨 拖拽吸色模式(变色龙)', dnd: '😴 勿扰睡觉 / 唤醒', evolve: '✨ 立即进化', quit: '❌ 退出' },
+  es: { chat: '💬 Chatear con el dragón (Claude)', lang: '🌐 Idioma / Language', fire: '🔥 Escupir fuego', fly: '🌀 Dar una vuelta', land: '🛬 Aterrizar / Despegar', friend: '💕 Invitar a un amigo', absorb: '🎨 Camuflaje al arrastrar', dnd: '😴 No molestar / Despertar', evolve: '✨ Evolucionar ahora', quit: '❌ Salir' },
+};
+
 ipcMain.on('context-menu', () => {
+  const curLang = loadConfig().lang || 'en';
+  const M = MENU_T[curLang] || MENU_T.en;
+  const langItem = (label, code) => ({ label, type: 'radio', checked: curLang === code, click: () => applyLangEverywhere(code) });
   const menu = Menu.buildFromTemplate([
-    { label: '💬 和龙聊天 (Claude)', click: () => openChat() },
-    { label: '🔥 喷火', click: () => win.webContents.send('cmd', 'fire') },
-    { label: '🌀 绕屏飞一圈', click: () => win.webContents.send('cmd', 'fly') },
-    { label: '🛬 降落 / 起飞', click: () => win.webContents.send('cmd', 'land') },
-    { label: '💕 叫朋友来', click: () => spawnCompanion() },
+    { label: M.chat, click: () => openChat() },
+    { label: M.lang, submenu: [langItem('English', 'en'), langItem('中文', 'zh'), langItem('Español', 'es')] },
+    { label: M.fire, click: () => win.webContents.send('cmd', 'fire') },
+    { label: M.fly, click: () => win.webContents.send('cmd', 'fly') },
+    { label: M.land, click: () => win.webContents.send('cmd', 'land') },
+    { label: M.friend, click: () => spawnCompanion() },
     {
-      label: '🎨 拖拽吸色模式(变色龙)',
-      type: 'checkbox',
-      checked: absorbModeOn,
+      label: M.absorb, type: 'checkbox', checked: absorbModeOn,
       click: (mi) => { absorbModeOn = mi.checked; win.webContents.send('cmd', absorbModeOn ? 'absorb-on' : 'absorb-off'); },
     },
-    { label: '😴 勿扰睡觉 / 唤醒', click: () => win.webContents.send('cmd', 'dnd') },
-    { label: '✨ 立即进化', click: () => win.webContents.send('cmd', 'evolve') },
+    { label: M.dnd, click: () => win.webContents.send('cmd', 'dnd') },
+    { label: M.evolve, click: () => win.webContents.send('cmd', 'evolve') },
     { type: 'separator' },
-    { label: '❌ 退出', click: () => app.quit() },
+    { label: M.quit, click: () => app.quit() },
   ]);
   menu.popup({ window: win });
 });

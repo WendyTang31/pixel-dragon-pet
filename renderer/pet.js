@@ -92,8 +92,12 @@ let soul = {
   plantedAt: Date.now(), // 种花时间(按真实时间生长)
   collected: [],        // 冒险带回的纪念品(后续用)
   affection: 0,         // 亲密度
+  hunger: 0,            // 饥饿度:工作越久涨越快,满了就吃一只螃蟹
   lastSeen: Date.now(),
 };
+let focusStreak = 0;    // 连续工作时长(越久越饿)
+let eatPhase = 'appear'; // 吃螃蟹:appear → chomp → yum
+let eatCrabX = 27, eatScale = 1;
 let lastCoin = 0;       // 上次攒到金币的时间
 
 // —— 性格向量:每次进化微妙漂移,让每个版本的龙飞法/脾气都略不同 ——
@@ -413,6 +417,27 @@ function spawnSweat() {
   if (hearts.length > 30) hearts.shift();
 }
 
+function spawnCrumb() {
+  hearts.push({
+    x: canvas.width * 0.6 + (Math.random() * 2 - 1) * U * 2,
+    y: canvas.height * 0.55,
+    vy: 0.4 + Math.random() * 0.5,          // 碎屑往下掉
+    vx: (Math.random() * 2 - 1) * 0.8,
+    life: 1, kind: 'crumb',
+  });
+}
+
+// 吃螃蟹(p1):肚子饿了就叼一只珊瑚螃蟹来吃掉
+function startEat() {
+  if (state !== 'ROAM' && state !== 'IDLE' && state !== 'LANDED') return;
+  state = 'EAT';
+  eatPhase = 'appear';
+  facingLeft = false;   // 面向右边的螃蟹
+  eatCrabX = 34;        // 从右边爬进来
+  eatScale = 1;
+  tState = performance.now();
+}
+
 // 随机自主活动(不受你控制):午睡/看书/健身/打工/看电视/上厕所
 function startActivity() {
   const acts = ['nap', 'read', 'workout', 'work', 'movie', 'toilet'];
@@ -563,7 +588,7 @@ function startFocusPark() {
 // 根据"感知到的用户状态"驱动桌宠(不打断你手动的操作)
 function applyPerceived() {
   if (dragging) return;
-  if (state === 'FLYLAP' || state === 'CHASE' || state === 'FIRE' || state === 'EVOLVING' || state === 'DATE' || state === 'ABSORB' || state === 'SLEEP' || state === 'TALK') return;
+  if (state === 'FLYLAP' || state === 'CHASE' || state === 'FIRE' || state === 'EVOLVING' || state === 'DATE' || state === 'ABSORB' || state === 'SLEEP' || state === 'TALK' || state === 'EAT') return;
   if (state === 'LANDED' && landReason === 'manual') return; // 你手动让它停的,不自动起飞
 
   if (perceived === 'FOCUS') {
@@ -661,7 +686,7 @@ function loop(now) {
   const inActivity = state === 'ACTIVITY';
   const napping = state === 'SLEEP' || (inActivity && activity === 'nap');
   const sleeping = napping;                                                // 闭眼睡姿
-  const grounded = state === 'LANDED' || state === 'SLEEP' || inActivity;  // 落地姿态
+  const grounded = state === 'LANDED' || state === 'SLEEP' || inActivity || state === 'EAT'; // 落地姿态
 
   const P = personality;
   const flapSpeed = (flying ? 8 : grounded ? 0 : 5) * P.flap;
@@ -677,6 +702,18 @@ function loop(now) {
     soul.coins++; lastCoin = now; saveSoul();
   }
 
+  // 饥饿度:你工作(FOCUS)时才涨,而且工作越久涨得越快 → 吃螃蟹越频繁
+  if (perceived === 'FOCUS') {
+    focusStreak += dt;
+    soul.hunger = Math.min(2, soul.hunger + dt * 0.000008 * (1 + focusStreak / 600000));
+  } else {
+    focusStreak = 0;
+  }
+  // 饿了就吃一只螃蟹(在漫游/悬停/着陆时触发)
+  if (!dragging && soul.hunger >= 1 && (state === 'ROAM' || state === 'IDLE' || state === 'LANDED')) {
+    soul.hunger = 0.15; saveSoul(); startEat();
+  }
+
   // 自动行为:仅在漫游/短暂悬停时(着陆专注模式完全安静)。频率随性格微调。
   // 追随只在"问候"时触发(见上),这里不再随机追鼠标。
   if (!dragging && (state === 'ROAM' || state === 'IDLE')) {
@@ -690,6 +727,20 @@ function loop(now) {
   if (state === 'ACTIVITY') {
     if (activity === 'workout' && Math.random() < 0.08) spawnSweat();
     if (now - tState > activityDur) { state = 'ROAM'; roamTarget = null; }
+  }
+
+  // 吃螃蟹动画:爬进来 → 一口咬掉(碎屑) → 咂咂嘴 → 回漫游
+  if (state === 'EAT') {
+    const el = now - tState;
+    facingLeft = false;
+    if (el < 700) { eatPhase = 'appear'; eatCrabX = 27 + (34 - 27) * (1 - el / 700); }
+    else if (el < 1500) { eatPhase = 'chomp'; eatCrabX = 27; eatScale = Math.max(0, 1 - (el - 700) / 700); if (Math.random() < 0.18) spawnCrumb(); }
+    else if (el < 2300) { eatPhase = 'yum'; eatScale = 0; }
+    else {
+      // 还在工作就回角落继续待着,否则继续漫游
+      if (perceived === 'FOCUS') { state = 'LANDED'; landReason = 'focus'; }
+      else { state = 'ROAM'; roamTarget = null; }
+    }
   }
 
   let fireVal = 0;
@@ -868,7 +919,7 @@ function loop(now) {
     look: look,
     landed: grounded,
     sleeping: sleeping,
-    mouthOpen: state === 'FIRE' && fireVal > 0.25,
+    mouthOpen: (state === 'FIRE' && fireVal > 0.25) || (state === 'EAT' && eatPhase === 'chomp'),
     fire: fireVal,
   };
 
@@ -893,10 +944,14 @@ function loop(now) {
 
   // 求偶舞:一上一下地欢快跳动(仙鹤点头)
   const danceHop = (state === 'DATE' && datePhase === 'dance') ? -Math.abs(Math.sin(t * 5)) * (U * 1.3) : 0;
+  const eatLean = (state === 'EAT' && eatPhase === 'chomp') ? U * 0.7 : 0; // 咬的时候低头俯身
   ctx.save();
-  ctx.translate(0, bob + danceHop + (flying ? Math.sin(t * 7) * (U * 0.25) : 0));
+  ctx.translate(0, bob + danceHop + eatLean + (flying ? Math.sin(t * 7) * (U * 0.25) : 0));
   drawDragon(form, o, facingLeft);
   ctx.restore();
+
+  // 吃螃蟹:把 p1 那只珊瑚螃蟹画在龙脚前
+  if (state === 'EAT') drawCrab(ox0, oy0, eatCrabX, 24, eatScale, t);
 
   // 身前的道具(后画,盖在龙身上,像捧着/敲着)
   if (inActivity) {
@@ -951,6 +1006,7 @@ function drawHearts() {
   for (const h of hearts) {
     ctx.globalAlpha = Math.max(0, Math.min(1, h.life));
     if (h.kind === 'sweat') drawDrop(h.x, h.y, Math.max(1, U * 0.4));
+    else if (h.kind === 'crumb') { ctx.fillStyle = '#c67b5c'; const s = Math.ceil(U * 0.5); ctx.fillRect(Math.round(h.x), Math.round(h.y), s, s); }
     else drawHeart(h.x, h.y, Math.max(1, U * 0.45));
   }
   ctx.globalAlpha = 1;
@@ -991,6 +1047,24 @@ function drawLaptop(ox0, oy0, t) {
   g(12, 29, 16, 2, '#aab0b8');            // 键盘底座
   g(12, 28, 16, 1, '#cfd5dd');            // 底座顶边
   for (let i = 0; i < 6; i++) g(14 + i * 2, 29, 1, 1, '#555'); // 按键
+}
+
+// 🦀 螃蟹(p1):珊瑚色身体 + 黑眼 + 小腿小钳;scale 变小 = 被吃掉
+function drawCrab(ox0, oy0, cxCell, cyCell, scale, t) {
+  if (scale <= 0.02) return;
+  ctx.save();
+  ctx.translate(ox0 + cxCell * U, oy0 + cyCell * U);
+  ctx.scale(scale, scale);
+  const g = (a, b, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(Math.round(a * U), Math.round(b * U), Math.ceil(w * U), Math.ceil(h * U)); };
+  const body = '#c67b5c', dark = '#9c5636', eye = '#141414', hi = '#d99a7c';
+  const wig = Math.sin(t * 14) > 0 ? 1 : 0;
+  g(-1.4, 1, 1.2, 1.6, dark); g(7.2, 1, 1.2, 1.6, dark);            // 两侧钳子
+  g(0.4, 4, 0.9, 1 + wig, dark); g(2.2, 4, 0.9, 2 - wig, dark);      // 腿(交替动)
+  g(4.6, 4, 0.9, 2 - wig, dark); g(6.4, 4, 0.9, 1 + wig, dark);
+  g(0, 1.6, 7.4, 2, body); g(0.5, 1, 6, 3.2, body);                 // 身体
+  g(0.5, 1, 6, 0.9, hi);                                            // 顶部高光
+  g(2.2, 1.6, 1, 1, eye); g(4.2, 1.6, 1, 1, eye);                   // 两只黑眼
+  ctx.restore();
 }
 
 // 📺 看电视:老式带天线的电视,屏幕放彩色动画(在左边)

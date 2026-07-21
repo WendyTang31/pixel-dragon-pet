@@ -4,7 +4,7 @@ const send = document.getElementById('send');
 const titleEl = document.getElementById('title');
 const langsEl = document.getElementById('langs');
 let typingEl = null;
-let lang = 'zh';
+let lang = 'en';
 
 const I18N = {
   en: {
@@ -32,7 +32,7 @@ const I18N = {
     error: 'Algo salió mal: ',
   },
 };
-function t() { return I18N[lang] || I18N.zh; }
+function t() { return I18N[lang] || I18N.en; }
 
 function applyLang() {
   titleEl.textContent = t().title;
@@ -63,7 +63,7 @@ function setTyping(on) {
 }
 
 async function load() {
-  lang = window.pet && window.pet.getLang ? await window.pet.getLang() : 'zh';
+  lang = window.pet && window.pet.getLang ? await window.pet.getLang() : 'en';
   applyLang();
   const h = window.pet && window.pet.chatHistory ? await window.pet.chatHistory() : [];
   if (!h || !h.length) {
@@ -80,6 +80,11 @@ if (window.pet && window.pet.onChatAppend) {
     if (m.role === 'assistant') setTyping(false);
     add(m.role === 'user' ? 'user' : 'bot', m.text);
   });
+}
+
+// 从右键菜单改语言时,窗口实时同步
+if (window.pet && window.pet.onLangChanged) {
+  window.pet.onLangChanged((code) => { lang = code; applyLang(); });
 }
 
 // 语言切换

@@ -7,12 +7,16 @@ const T = {
   zh: { ph: '问我…（Enter 发送）', thinking: '思考中…', error: '出错了:' },
   es: { ph: 'Pregúntame… (Enter)', thinking: 'pensando…', error: 'Error: ' },
 };
-let L = T.zh;
+let L = T.en;
 (async () => {
-  const lang = window.pet && window.pet.getLang ? await window.pet.getLang() : 'zh';
-  L = T[lang] || T.zh;
-  ta.placeholder = L.ph;
+  const lang = window.pet && window.pet.getLang ? await window.pet.getLang() : 'en';
+  L = T[lang] || T.en;
+  if (!busy) ta.placeholder = L.ph;
 })();
+// 从右键菜单改语言时,气泡实时同步
+if (window.pet && window.pet.onLangChanged) {
+  window.pet.onLangChanged((code) => { L = T[code] || T.en; if (!busy) ta.placeholder = L.ph; });
+}
 
 function setText(v) { clearing = true; ta.value = v; clearing = false; }
 
