@@ -1,0 +1,29 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; font-family: system-ui, "Segoe UI", sans-serif; }
+    #wrap { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding: 6px; }
+    #bub {
+      width: 100%; height: 116px; background: #ffffff; border: 4px solid #1c1c1c;
+      border-radius: 16px; padding: 8px 10px; box-shadow: 4px 4px 0 rgba(0,0,0,0.18);
+    }
+    #ta {
+      width: 100%; height: 100%; border: none; outline: none; resize: none; background: transparent;
+      font-size: 13.5px; line-height: 1.4; color: #14210a; font-family: inherit;
+    }
+    #ta::placeholder { color: #9aa39a; }
+    #tail { width: 0; height: 0; border-left: 12px solid transparent; border-right: 12px solid transparent; border-top: 16px solid #1c1c1c; position: relative; margin-top: -3px; }
+    #tail::after { content: ''; position: absolute; top: -20px; left: -8px; width: 0; height: 0; border-left: 8px solid transparent; border-right: 8px solid transparent; border-top: 12px solid #fff; }
+  </style>
+</head>
+<body>
+  <div id="wrap">
+    <div id="bub"><textarea id="ta" placeholder="问我…（Enter 发送）"></textarea></div>
+    <div id="tail"></div>
+  </div>
+  <script src="bubble.js"></script>
+</body>
+</html>

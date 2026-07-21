@@ -1,0 +1,25 @@
+const { contextBridge, ipcRenderer } = require('electron');
+
+contextBridge.exposeInMainWorld('pet', {
+  screenSize: () => ipcRenderer.invoke('screen-size'),
+  getPos: () => ipcRenderer.invoke('get-pos'),
+  moveTo: (x, y) => ipcRenderer.send('move-to', x, y),
+  quit: () => ipcRenderer.send('quit'),
+  contextMenu: () => ipcRenderer.send('context-menu'),
+  onCmd: (cb) => ipcRenderer.on('cmd', (e, c) => cb(c)),
+  onCursor: (cb) => ipcRenderer.on('cursor', (e, data) => cb(data)),
+  loadSoul: () => ipcRenderer.invoke('load-soul'),
+  saveSoul: (d) => ipcRenderer.send('save-soul', d),
+  wallpaperPalette: () => ipcRenderer.invoke('wallpaper-palette'),
+  sampleHere: () => ipcRenderer.invoke('sample-under-pet'),
+  onWallpaper: (cb) => ipcRenderer.on('wallpaper', (e, d) => cb(d)),
+  chatSend: (text) => ipcRenderer.invoke('chat-send', text),
+  chatHasKey: () => ipcRenderer.invoke('chat-has-key'),
+  chatHistory: () => ipcRenderer.invoke('chat-history'),
+  onChatAppend: (cb) => ipcRenderer.on('chat-append', (e, m) => cb(m)),
+  getLang: () => ipcRenderer.invoke('get-lang'),
+  setLang: (l) => ipcRenderer.send('set-lang', l),
+  onAppTag: (cb) => ipcRenderer.on('app-tag', (e, tag) => cb(tag)),
+  toggleBubble: () => ipcRenderer.send('toggle-bubble'),
+  closeBubble: () => ipcRenderer.send('close-bubble'),
+});

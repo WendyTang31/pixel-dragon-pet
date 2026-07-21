@@ -1,0 +1,34 @@
+{
+  "name": "pixel-dragon-pet",
+  "version": "1.0.0",
+  "description": "A pixel desktop dragon pet that flies, breathes fire, and randomly evolves.",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder"
+  },
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.regen.pixeldragon",
+    "productName": "PixelDragon",
+    "asarUnpack": [
+      "**/node_modules/active-win/**"
+    ],
+    "win": {
+      "target": "portable",
+      "icon": "build/icon.ico"
+    },
+    "mac": {
+      "target": "dmg",
+      "category": "public.app-category.entertainment"
+    }
+  },
+  "dependencies": {
+    "active-win": "^8.2.1"
+  }
+}
